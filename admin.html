@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIME | Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root{
+  --obsidian:#0A0A0F;--navy-900:#10101F;--navy-800:#151527;--navy-700:#1C1C32;
+  --text-hi:#F2F1EC;--text-body:#C9C9CF;--text-mute:#9BA0A8;
+  --seigo-red:#C8102E;--seigo-red-hover:#E4173A;--gold:#C9A227;
+  --hairline:rgba(255,255,255,.08);--hairline-strong:rgba(255,255,255,.16);
+  --display:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --body:'Inter','Helvetica Neue',Arial,sans-serif;
+  --r-control:4px;--r-card:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--obsidian);color:var(--text-body);font-family:var(--body);font-size:15px;line-height:1.6;min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto;padding:40px 24px 100px}
+h1,h2,h3{font-family:var(--display);color:var(--text-hi);font-weight:700}
+a{color:var(--gold)}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#login-box{width:100%;max-width:380px;background:var(--navy-800);border:1px solid var(--hairline);border-radius:var(--r-card);padding:40px 32px}
+#login-box h1{font-size:24px;margin-bottom:6px}
+#login-box p{color:var(--text-mute);font-size:13.5px;margin-bottom:28px}
+#login-error{color:var(--seigo-red-hover);font-size:13px;margin-top:14px;display:none}
+
+/* GENERAL */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-mute);margin-bottom:7px}
+.inp,textarea,select{width:100%;background:var(--navy-900);border:1px solid var(--hairline-strong);border-radius:var(--r-control);padding:11px 13px;color:var(--text-hi);font-family:inherit;font-size:14.5px}
+textarea{min-height:100px;resize:vertical}
+.inp:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold)}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--body);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:12px 22px;border-radius:var(--r-control);cursor:pointer;border:1px solid transparent;transition:all .2s}
+.btn-primary{background:var(--seigo-red);color:#fff}
+.btn-primary:hover{background:var(--seigo-red-hover)}
+.btn-ghost{background:transparent;color:var(--text-hi);border-color:var(--hairline-strong)}
+.btn-ghost:hover{border-color:var(--text-hi)}
+.btn-danger{background:transparent;color:var(--seigo-red-hover);border-color:var(--seigo-red-hover);padding:8px 14px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* DASHBOARD */
+#dash{display:none}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--hairline);position:sticky;top:0;background:rgba(10,10,15,.92);backdrop-filter:blur(10px);z-index:10}
+header.top .brand{font-family:var(--display);font-weight:800;font-size:18px;color:var(--text-hi);letter-spacing:.02em}
+header.top .who{font-size:13px;color:var(--text-mute)}
+.tabs{display:flex;gap:8px;margin:32px 0 24px;border-bottom:1px solid var(--hairline)}
+.tab{padding:12px 4px;margin-right:24px;color:var(--text-mute);cursor:pointer;font-size:14px;font-weight:600;border-bottom:2px solid transparent;user-select:none}
+.tab.active{color:var(--text-hi);border-color:var(--seigo-red)}
+.panel{display:none}
+.panel.active{display:block}
+.formcard{background:var(--navy-800);border:1px solid var(--hairline);border-radius:var(--r-card);padding:24px;margin-bottom:32px}
+.formcard h3{font-size:16px;margin-bottom:18px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.row2{grid-template-columns:1fr}}
+.item{display:flex;gap:16px;align-items:flex-start;background:var(--navy-900);border:1px solid var(--hairline);border-radius:var(--r-card);padding:16px 18px;margin-bottom:12px}
+.item img{width:80px;height:80px;object-fit:cover;border-radius:6px;background:var(--navy-700);flex-shrink:0}
+.item .info{flex:1;min-width:0}
+.item .info h4{color:var(--text-hi);font-size:15px;margin-bottom:4px}
+.item .info p{font-size:13px;color:var(--text-mute);margin-bottom:6px}
+.item .meta{font-size:12px;color:var(--gold)}
+.item .actions{display:flex;gap:8px;flex-shrink:0}
+.pill{font-size:11px;padding:3px 9px;border-radius:20px;letter-spacing:.04em;text-transform:uppercase}
+.pill.pub{background:rgba(45,180,110,.15);color:#4ade80}
+.pill.draft{background:rgba(255,255,255,.08);color:var(--text-mute)}
+.msg{padding:10px 14px;border-radius:var(--r-control);font-size:13px;margin-bottom:16px;display:none}
+.msg.ok{background:rgba(45,180,110,.12);color:#4ade80;display:block}
+.msg.err{background:rgba(200,16,46,.12);color:#f87171;display:block}
+.empty-note{color:var(--text-mute);font-size:14px;padding:20px 0}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div id="login-box">
+    <h1>KIME Admin</h1>
+    <p>Sign in to manage posts, events and the store.</p>
+    <form id="login-form">
+      <div class="field"><label for="li-email">Email</label><input class="inp" id="li-email" type="email" required></div>
+      <div class="field"><label for="li-pass">Password</label><input class="inp" id="li-pass" type="password" required></div>
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">Sign In</button>
+      <p id="login-error"></p>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash">
+  <header class="top">
+    <div class="brand">KIME ADMIN</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="who" id="who"></span>
+      <button class="btn btn-ghost" id="logout-btn" style="padding:9px 16px">Log Out</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="tabs">
+      <div class="tab active" data-tab="posts">Newsroom</div>
+      <div class="tab" data-tab="events">Events</div>
+      <div class="tab" data-tab="store">Store</div>
+    </div>
+
+    <!-- POSTS -->
+    <div class="panel active" id="panel-posts">
+      <div class="formcard">
+        <h3>New Announcement</h3>
+        <p class="msg" id="posts-msg"></p>
+        <div class="field"><label>Title</label><input class="inp" id="p-title"></div>
+        <div class="field"><label>Content</label><textarea id="p-content"></textarea></div>
+        <div class="field"><label>Cover Image (optional)</label><input class="inp" id="p-image" type="file" accept="image/*"></div>
+        <div class="row2">
+          <div class="field"><label><input type="checkbox" id="p-published" style="width:auto;margin-right:8px">Publish immediately</label></div>
+          <div></div>
+        </div>
+        <button class="btn btn-primary" id="p-submit">Add Announcement</button>
+      </div>
+      <div id="posts-list"></div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="panel" id="panel-events">
+      <div class="formcard">
+        <h3>New Event</h3>
+        <p class="msg" id="events-msg"></p>
+        <div class="row2">
+          <div class="field"><label>Title</label><input class="inp" id="e-title"></div>
+          <div class="field"><label>Date</label><input class="inp" id="e-date" type="date"></div>
+        </div>
+        <div class="field"><label>Description</label><textarea id="e-desc"></textarea></div>
+        <div class="row2">
+          <div class="field"><label>Location</label><input class="inp" id="e-location"></div>
+          <div class="field"><label>Cover Image (optional)</label><input class="inp" id="e-image" type="file" accept="image/*"></div>
+        </div>
+        <div class="field"><label><input type="checkbox" id="e-published" style="width:auto;margin-right:8px">Publish immediately</label></div>
+        <button class="btn btn-primary" id="e-submit">Add Event</button>
+      </div>
+      <div id="events-list"></div>
+    </div>
+
+    <!-- STORE -->
+    <div class="panel" id="panel-store">
+      <div class="formcard">
+        <h3>New Store Item</h3>
+        <p class="msg" id="store-msg"></p>
+        <div class="row2">
+          <div class="field"><label>Name</label><input class="inp" id="s-name"></div>
+          <div class="field"><label>Price (₹)</label><input class="inp" id="s-price" type="number" min="0" step="1"></div>
+        </div>
+        <div class="field"><label>Description</label><textarea id="s-desc"></textarea></div>
+        <div class="field"><label>Product Image</label><input class="inp" id="s-image" type="file" accept="image/*"></div>
+        <div class="row2">
+          <div class="field"><label><input type="checkbox" id="s-instock" checked style="width:auto;margin-right:8px">In stock</label></div>
+          <div class="field"><label><input type="checkbox" id="s-published" style="width:auto;margin-right:8px">Publish immediately</label></div>
+        </div>
+        <button class="btn btn-primary" id="s-submit">Add Store Item</button>
+      </div>
+      <div id="store-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://ryfueewhyuooalnyuhhk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5ZnVlZXdoeXVvb2Fsbnl1aGhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzM3ODIsImV4cCI6MjEwMTcwOTc4Mn0.HhuTR4XulXIexJGYnP9VxEQk2lB9zHI-zb6iGOstrM4';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = s => document.querySelector(s);
+const esc = s => (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- AUTH ---------- */
+async function checkSession(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (session){ showDash(session); } else { showLogin(); }
+}
+function showLogin(){ $('#login-screen').style.display='flex'; $('#dash').style.display='none'; }
+function showDash(session){
+  $('#login-screen').style.display='none';
+  $('#dash').style.display='block';
+  $('#who').textContent = session.user.email;
+  loadPosts(); loadEvents(); loadStore();
+}
+$('#login-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  $('#login-error').style.display='none';
+  const { data, error } = await sb.auth.signInWithPassword({ email:$('#li-email').value.trim(), password:$('#li-pass').value });
+  if (error){ $('#login-error').textContent = 'Login failed: ' + error.message; $('#login-error').style.display='block'; return; }
+  showDash(data.session);
+});
+$('#logout-btn').addEventListener('click', async ()=>{ await sb.auth.signOut(); showLogin(); });
+checkSession();
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click', ()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $('#panel-'+t.dataset.tab).classList.add('active');
+}));
+
+/* ---------- IMAGE UPLOAD ---------- */
+async function uploadImage(fileInput){
+  const file = fileInput.files[0];
+  if (!file) return null;
+  const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g,'')}`;
+  const { error } = await sb.storage.from('media').upload(path, file);
+  if (error) throw error;
+  const { data } = sb.storage.from('media').getPublicUrl(path);
+  return data.publicUrl;
+}
+function showMsg(id, text, ok){
+  const el = $(id); el.textContent = text; el.className = 'msg ' + (ok?'ok':'err');
+}
+
+/* ---------- POSTS ---------- */
+$('#p-submit').addEventListener('click', async ()=>{
+  const btn = $('#p-submit'), original = btn.textContent;
+  const title = $('#p-title').value.trim(), content = $('#p-content').value.trim();
+  if (!title || !content){ showMsg('#posts-msg','Title and content are required.', false); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const cover_image = await uploadImage($('#p-image'));
+    const { error } = await sb.from('posts').insert({ title, content, cover_image, published: $('#p-published').checked });
+    if (error) throw error;
+    $('#p-title').value=''; $('#p-content').value=''; $('#p-image').value=''; $('#p-published').checked=false;
+    showMsg('#posts-msg','Announcement added.', true);
+    loadPosts();
+  }catch(err){ showMsg('#posts-msg','Error: '+err.message, false); }
+  finally{ btn.disabled=false; btn.textContent=original; }
+});
+async function loadPosts(){
+  const { data, error } = await sb.from('posts').select('*').order('created_at',{ascending:false});
+  const list = $('#posts-list');
+  if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
+  if (!data.length){ list.innerHTML = '<p class="empty-note">No announcements yet.</p>'; return; }
+  list.innerHTML = data.map(p => `
+    <div class="item">
+      ${p.cover_image ? `<img src="${esc(p.cover_image)}">` : ''}
+      <div class="info">
+        <h4>${esc(p.title)} <span class="pill ${p.published?'pub':'draft'}">${p.published?'Published':'Draft'}</span></h4>
+        <p>${esc((p.content||'').slice(0,120))}${(p.content||'').length>120?'…':''}</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="togglePublish('posts','${p.id}',${!p.published})">${p.published?'Unpublish':'Publish'}</button>
+        <button class="btn btn-danger" onclick="deleteRow('posts','${p.id}',loadPosts)">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- EVENTS ---------- */
+$('#e-submit').addEventListener('click', async ()=>{
+  const btn = $('#e-submit'), original = btn.textContent;
+  const title = $('#e-title').value.trim(), event_date = $('#e-date').value;
+  if (!title || !event_date){ showMsg('#events-msg','Title and date are required.', false); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const cover_image = await uploadImage($('#e-image'));
+    const { error } = await sb.from('events').insert({
+      title, event_date, description: $('#e-desc').value.trim(), location: $('#e-location').value.trim(),
+      cover_image, published: $('#e-published').checked
+    });
+    if (error) throw error;
+    $('#e-title').value=''; $('#e-date').value=''; $('#e-desc').value=''; $('#e-location').value=''; $('#e-image').value=''; $('#e-published').checked=false;
+    showMsg('#events-msg','Event added.', true);
+    loadEvents();
+  }catch(err){ showMsg('#events-msg','Error: '+err.message, false); }
+  finally{ btn.disabled=false; btn.textContent=original; }
+});
+async function loadEvents(){
+  const { data, error } = await sb.from('events').select('*').order('event_date',{ascending:true});
+  const list = $('#events-list');
+  if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
+  if (!data.length){ list.innerHTML = '<p class="empty-note">No events yet.</p>'; return; }
+  list.innerHTML = data.map(ev => `
+    <div class="item">
+      ${ev.cover_image ? `<img src="${esc(ev.cover_image)}">` : ''}
+      <div class="info">
+        <h4>${esc(ev.title)} <span class="pill ${ev.published?'pub':'draft'}">${ev.published?'Published':'Draft'}</span></h4>
+        <p>${esc(ev.description||'')}</p>
+        <span class="meta">${esc(ev.event_date)} ${ev.location?'· '+esc(ev.location):''}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="togglePublish('events','${ev.id}',${!ev.published})">${ev.published?'Unpublish':'Publish'}</button>
+        <button class="btn btn-danger" onclick="deleteRow('events','${ev.id}',loadEvents)">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- STORE ---------- */
+$('#s-submit').addEventListener('click', async ()=>{
+  const btn = $('#s-submit'), original = btn.textContent;
+  const name = $('#s-name').value.trim(), price = $('#s-price').value;
+  if (!name || !price){ showMsg('#store-msg','Name and price are required.', false); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const image = await uploadImage($('#s-image'));
+    const { error } = await sb.from('store_items').insert({
+      name, price: Number(price), description: $('#s-desc').value.trim(),
+      image, in_stock: $('#s-instock').checked, published: $('#s-published').checked
+    });
+    if (error) throw error;
+    $('#s-name').value=''; $('#s-price').value=''; $('#s-desc').value=''; $('#s-image').value=''; $('#s-published').checked=false; $('#s-instock').checked=true;
+    showMsg('#store-msg','Item added.', true);
+    loadStore();
+  }catch(err){ showMsg('#store-msg','Error: '+err.message, false); }
+  finally{ btn.disabled=false; btn.textContent=original; }
+});
+async function loadStore(){
+  const { data, error } = await sb.from('store_items').select('*').order('created_at',{ascending:false});
+  const list = $('#store-list');
+  if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
+  if (!data.length){ list.innerHTML = '<p class="empty-note">No store items yet.</p>'; return; }
+  list.innerHTML = data.map(it => `
+    <div class="item">
+      ${it.image ? `<img src="${esc(it.image)}">` : ''}
+      <div class="info">
+        <h4>${esc(it.name)} <span class="pill ${it.published?'pub':'draft'}">${it.published?'Published':'Draft'}</span></h4>
+        <p>${esc(it.description||'')}</p>
+        <span class="meta">₹${Number(it.price).toLocaleString('en-IN')} ${it.in_stock===false?'· Out of stock':''}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="togglePublish('store_items','${it.id}',${!it.published})">${it.published?'Unpublish':'Publish'}</button>
+        <button class="btn btn-danger" onclick="deleteRow('store_items','${it.id}',loadStore)">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- SHARED ---------- */
+async function togglePublish(table, id, newVal){
+  await sb.from(table).update({ published:newVal }).eq('id', id);
+  if (table==='posts') loadPosts(); else if (table==='events') loadEvents(); else loadStore();
+}
+async function deleteRow(table, id, reload){
+  if (!confirm('Delete this permanently?')) return;
+  await sb.from(table).delete().eq('id', id);
+  reload();
+}
+window.togglePublish = togglePublish;
+window.deleteRow = deleteRow;
+</script>
+</body>
+</html>
