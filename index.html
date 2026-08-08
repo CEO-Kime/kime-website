@@ -211,6 +211,21 @@ textarea.inp{min-height:96px;resize:vertical}
 /* hero v2 */
 /* media kit */
 .dl{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 26px;border:1px solid var(--hairline);border-radius:var(--r-card);background:var(--navy-800);margin-bottom:14px;transition:border-color var(--t-blink)}
+
+/* ============ DYNAMIC CONTENT (posts/events/store) ============ */
+.dyn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:24px}
+.dyn-grid:empty{display:none}
+.dyn-card{border:1px solid var(--hairline);border-radius:var(--r-card);background:var(--navy-800);overflow:hidden;display:flex;flex-direction:column;transition:border-color var(--t-blink)}
+.dyn-card:hover{border-color:var(--hairline-strong)}
+.dyn-card .img{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--navy-700)}
+.dyn-card .body{padding:22px 24px 26px;display:flex;flex-direction:column;gap:10px;flex:1}
+.dyn-card .tag{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.dyn-card h4{font-family:var(--display);font-weight:700;font-size:19px;color:var(--text-hi);line-height:1.3}
+.dyn-card p{font-size:14.5px;color:var(--text-mute);line-height:1.6;flex:1}
+.dyn-card .meta{font-size:12.5px;color:var(--text-mute);letter-spacing:.02em}
+.dyn-card .price{font-family:var(--display);font-weight:700;font-size:17px;color:var(--text-hi);margin-top:4px}
+.dyn-card .buy{margin-top:12px;align-self:flex-start}
+#loader ~ * .dyn-grid.loading{opacity:.4}
 .dl:hover{border-color:var(--hairline-strong)}
 .dl .t b{display:block;color:var(--text-hi);font-weight:600;font-size:15.5px;font-family:var(--display)}
 .dl .t span{font-size:13px;color:var(--text-mute)}
@@ -1365,7 +1380,8 @@ c-4 27 -13 56 -22 64 l-15 15 -5 -34z"/>
     <div class="wrap stub">
       <p class="eyebrow">Newsroom</p>
       <h1>Announcements<br>&amp; Coverage</h1>
-      <div class="empty" style="margin-top:44px">
+      <div id="posts-grid" class="dyn-grid" style="margin-top:44px"></div>
+      <div class="empty" id="posts-empty" style="margin-top:44px">
         <svg class="glyph" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 5h12v14H6a2 2 0 0 1-2-2V5zM16 8h3a1 1 0 0 1 1 1v8a2 2 0 0 1-2 2h-2M7 9h6M7 12.5h6M7 16h4"/></svg>
         <h3>No Announcements Yet</h3>
         <p>Major tournaments, partnerships and federation news will appear here as they happen.</p>
@@ -1378,7 +1394,8 @@ c-4 27 -13 56 -22 64 l-15 15 -5 -34z"/>
     <div class="wrap stub">
       <p class="eyebrow">The KIME Store</p>
       <h1>Earn It.<br>Then Wear It.</h1>
-      <div class="empty" style="margin-top:44px">
+      <div id="store-grid" class="dyn-grid dyn-grid-store" style="margin-top:44px"></div>
+      <div class="empty" id="store-empty" style="margin-top:44px">
         <svg class="glyph" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7V6a6 6 0 0 1 12 0v1M4 7h16l-1.2 13a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8L4 7z"/></svg>
         <h3>Opening Soon</h3>
         <p>Premium apparel, federation-grade equipment and exclusive KIME merchandise. The store opens with our first collection.</p>
@@ -1391,7 +1408,8 @@ c-4 27 -13 56 -22 64 l-15 15 -5 -34z"/>
     <div class="wrap stub">
       <p class="eyebrow">Events</p>
       <h1>Gradings, Camps<br>&amp; Tournaments</h1>
-      <div class="empty" style="margin-top:44px">
+      <div id="events-grid" class="dyn-grid" style="margin-top:44px"></div>
+      <div class="empty" id="events-empty" style="margin-top:44px">
         <svg class="glyph" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
         <h3>No Upcoming Public Events</h3>
         <p>Belt gradings run twice a year and Dan gradings once, alongside camps, workshops and tournaments. New dates appear here the moment they are scheduled.</p>
@@ -1641,6 +1659,74 @@ const sio=new IntersectionObserver(es=>{es.forEach(e=>{
 $$('[data-count]').forEach(el=>sio.observe(el));
 
 $$('.field .inp').forEach(el=>el.addEventListener('input',()=>el.closest('.field').classList.remove('bad')));
+</script>
+
+<!-- ============ LIVE CONTENT (Newsroom / Events / Store) ============ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  const SUPABASE_URL = 'https://ryfueewhyuooalnyuhhk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5ZnVlZXdoeXVvb2Fsbnl1aGhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMzM3ODIsImV4cCI6MjEwMTcwOTc4Mn0.HhuTR4XulXIexJGYnP9VxEQk2lB9zHI-zb6iGOstrM4';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const esc = s => (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtDate = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const fmtPrice = n => '₹' + Number(n).toLocaleString('en-IN');
+
+  async function loadPosts(){
+    const grid = document.getElementById('posts-grid'), empty = document.getElementById('posts-empty');
+    const { data, error } = await sb.from('posts').select('*').eq('published', true).order('created_at', { ascending: false });
+    if (error || !data || !data.length) { empty.style.display=''; return; }
+    empty.style.display = 'none';
+    grid.innerHTML = data.map(p => `
+      <article class="dyn-card">
+        ${p.cover_image ? `<img class="img" src="${esc(p.cover_image)}" alt="" loading="lazy">` : ''}
+        <div class="body">
+          <span class="meta">${fmtDate(p.created_at.slice(0,10))}</span>
+          <h4>${esc(p.title)}</h4>
+          <p>${esc((p.content||'').slice(0,140))}${(p.content||'').length>140?'…':''}</p>
+        </div>
+      </article>`).join('');
+  }
+
+  async function loadEvents(){
+    const grid = document.getElementById('events-grid'), empty = document.getElementById('events-empty');
+    const { data, error } = await sb.from('events').select('*').eq('published', true).order('event_date', { ascending: true });
+    if (error || !data || !data.length) { empty.style.display=''; return; }
+    empty.style.display = 'none';
+    grid.innerHTML = data.map(ev => `
+      <article class="dyn-card">
+        ${ev.cover_image ? `<img class="img" src="${esc(ev.cover_image)}" alt="" loading="lazy">` : ''}
+        <div class="body">
+          <span class="tag">${fmtDate(ev.event_date)}</span>
+          <h4>${esc(ev.title)}</h4>
+          <p>${esc(ev.description||'')}</p>
+          ${ev.location ? `<span class="meta">📍 ${esc(ev.location)}</span>` : ''}
+        </div>
+      </article>`).join('');
+  }
+
+  async function loadStore(){
+    const grid = document.getElementById('store-grid'), empty = document.getElementById('store-empty');
+    const { data, error } = await sb.from('store_items').select('*').eq('published', true).order('created_at', { ascending: false });
+    if (error || !data || !data.length) { empty.style.display=''; return; }
+    empty.style.display = 'none';
+    grid.innerHTML = data.map(it => `
+      <article class="dyn-card">
+        ${it.image ? `<img class="img" src="${esc(it.image)}" alt="" loading="lazy">` : ''}
+        <div class="body">
+          <h4>${esc(it.name)}</h4>
+          <p>${esc(it.description||'')}</p>
+          <span class="price">${fmtPrice(it.price)}</span>
+          ${it.in_stock === false ? `<span class="meta">Out of stock</span>` : `<button class="btn btn-primary buy" data-buy="${it.id}">Buy Now <span class="arr">→</span></button>`}
+        </div>
+      </article>`).join('');
+  }
+
+  loadPosts();
+  loadEvents();
+  loadStore();
+})();
 </script>
 </body>
 </html>
