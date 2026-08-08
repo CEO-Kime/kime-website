@@ -84,6 +84,20 @@ header.top .who{font-size:13px;color:var(--text-mute)}
       <div class="field"><label for="li-pass">Password</label><input class="inp" id="li-pass" type="password" required></div>
       <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">Sign In</button>
       <p id="login-error"></p>
+      <p style="text-align:center;margin-top:18px;font-size:13px"><a href="#" id="forgot-link">Forgot password?</a></p>
+    </form>
+  </div>
+</div>
+
+<!-- PASSWORD RESET (shown only when arriving from a reset email) -->
+<div id="reset-screen" style="display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px">
+  <div id="login-box">
+    <h1>Set New Password</h1>
+    <p>Choose a new password for your admin account.</p>
+    <form id="reset-form">
+      <div class="field"><label for="rs-pass">New Password</label><input class="inp" id="rs-pass" type="password" required minlength="6"></div>
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">Update Password</button>
+      <p id="reset-msg" class="msg" style="margin-top:14px"></p>
     </form>
   </div>
 </div>
@@ -193,6 +207,43 @@ $('#login-form').addEventListener('submit', async e=>{
   showDash(data.session);
 });
 $('#logout-btn').addEventListener('click', async ()=>{ await sb.auth.signOut(); showLogin(); });
+
+/* ---------- FORGOT PASSWORD ---------- */
+$('#forgot-link').addEventListener('click', async e=>{
+  e.preventDefault();
+  const email = prompt('Enter the email connected to your admin account:');
+  if (!email) return;
+  const { error } = await sb.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: window.location.origin + '/admin'
+  });
+  if (error) alert('Error: ' + error.message);
+  else alert('Check that inbox (and spam folder) for a password reset link.');
+});
+
+/* ---------- HANDLE RESET LINK (when user clicks the emailed link) ---------- */
+sb.auth.onAuthStateChange((event, session)=>{
+  if (event === 'PASSWORD_RECOVERY'){
+    $('#login-screen').style.display = 'none';
+    $('#dash').style.display = 'none';
+    $('#reset-screen').style.display = 'flex';
+  }
+});
+$('#reset-form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const btn = e.target.querySelector('button'), original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Updating…';
+  const { error } = await sb.auth.updateUser({ password: $('#rs-pass').value });
+  if (error){
+    $('#reset-msg').textContent = 'Error: ' + error.message;
+    $('#reset-msg').className = 'msg err';
+  } else {
+    $('#reset-msg').textContent = 'Password updated. Redirecting to login…';
+    $('#reset-msg').className = 'msg ok';
+    setTimeout(()=>{ window.location.href = window.location.origin + '/admin'; }, 1800);
+  }
+  btn.disabled = false; btn.textContent = original;
+});
+
 checkSession();
 
 /* ---------- TABS ---------- */
