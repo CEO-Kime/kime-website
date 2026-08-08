@@ -1586,7 +1586,7 @@ overlay.addEventListener('keydown',e=>{
 
 /* FORM — Indian validation, errors state the fix */
 const phoneOK=v=>/^[6-9]\d{9}$/.test(v.replace(/[^\d]/g,'').replace(/^91/,''));
-$('#enq').addEventListener('submit',e=>{
+$('#enq').addEventListener('submit',async e=>{
   e.preventDefault();
   if(e.target.website.value)return; /* honeypot */
   let ok=true;
@@ -1597,9 +1597,36 @@ $('#enq').addEventListener('submit',e=>{
   check('#f-city',v=>v.length>1);
   check('#f-org',v=>!!v);
   if(!ok){$('.field.bad .inp')?.focus();return}
-  /* production: server action → Sanity enquiry document + Resend notification */
-  $('#formwrap').style.display='none';
-  $('#success').classList.add('show');
+
+  const btn=e.target.querySelector('button[type="submit"]'),original=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML='Sending…';
+
+  try{
+    const res=await fetch('https://api.web3forms.com/submit',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({
+        access_key:'f7115b8c-c4ec-4268-9fd0-6d8e4f2545c8',
+        subject:'New KIME Enquiry',
+        from_name:'KIME Website',
+        name:$('#f-name').value.trim(),
+        email:$('#f-email').value.trim()||'Not provided',
+        phone:$('#f-phone').value.trim(),
+        city:$('#f-city').value.trim(),
+        represents:$('#f-org').value,
+        preferred_callback:$('#f-time').value,
+        message:$('#f-msg').value.trim()||'No message provided'
+      })
+    });
+    const data=await res.json();
+    if(!data.success)throw new Error(data.message||'Failed');
+    $('#formwrap').style.display='none';
+    $('#success').classList.add('show');
+  }catch(err){
+    alert('Something went wrong sending your enquiry. Please try again, or reach us directly at contact@kimeworld.com.');
+  }finally{
+    btn.disabled=false;btn.innerHTML=original;
+  }
 });
 
 /* stat counters */
