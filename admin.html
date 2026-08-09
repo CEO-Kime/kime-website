@@ -117,6 +117,7 @@ header.top .who{font-size:13px;color:var(--text-mute)}
       <div class="tab active" data-tab="posts">Newsroom</div>
       <div class="tab" data-tab="events">Events</div>
       <div class="tab" data-tab="store">Store</div>
+      <div class="tab" data-tab="coupons">Coupons</div>
     </div>
 
     <!-- POSTS -->
@@ -163,10 +164,24 @@ header.top .who{font-size:13px;color:var(--text-mute)}
         <p class="msg" id="store-msg"></p>
         <div class="row2">
           <div class="field"><label>Name</label><input class="inp" id="s-name"></div>
-          <div class="field"><label>Price (₹)</label><input class="inp" id="s-price" type="number" min="0" step="1"></div>
+          <div class="field"><label>Current Price (₹)</label><input class="inp" id="s-price" type="number" min="0" step="1"></div>
+        </div>
+        <div class="field">
+          <label>Original Price (₹) — optional, leave blank if no discount</label>
+          <input class="inp" id="s-original-price" type="number" min="0" step="1" placeholder="e.g. 1999 — shown crossed out above the current price">
         </div>
         <div class="field"><label>Description</label><textarea id="s-desc"></textarea></div>
-        <div class="field"><label>Product Image</label><input class="inp" id="s-image" type="file" accept="image/*"></div>
+        <div class="field">
+          <label>Product Photos (up to 4 — first one is the main cover photo)</label>
+          <div class="row2" style="margin-bottom:12px">
+            <input class="inp" id="s-image1" type="file" accept="image/*">
+            <input class="inp" id="s-image2" type="file" accept="image/*">
+          </div>
+          <div class="row2">
+            <input class="inp" id="s-image3" type="file" accept="image/*">
+            <input class="inp" id="s-image4" type="file" accept="image/*">
+          </div>
+        </div>
         <div class="row2">
           <div class="field"><label><input type="checkbox" id="s-instock" checked style="width:auto;margin-right:8px">In stock</label></div>
           <div class="field"><label><input type="checkbox" id="s-published" style="width:auto;margin-right:8px">Publish immediately</label></div>
@@ -174,6 +189,30 @@ header.top .who{font-size:13px;color:var(--text-mute)}
         <button class="btn btn-primary" id="s-submit">Add Store Item</button>
       </div>
       <div id="store-list"></div>
+    </div>
+
+    <!-- COUPONS -->
+    <div class="panel" id="panel-coupons">
+      <div class="formcard">
+        <h3>New Coupon Code</h3>
+        <p class="msg" id="coupons-msg"></p>
+        <div class="row2">
+          <div class="field"><label>Code</label><input class="inp" id="c-code" placeholder="e.g. KIME20" style="text-transform:uppercase"></div>
+          <div class="field"><label>Discount Type</label>
+            <select class="inp" id="c-type">
+              <option value="percent">Percentage off (%)</option>
+              <option value="flat">Flat amount off (₹)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Discount Value</label><input class="inp" id="c-value" type="number" min="0" step="1" placeholder="e.g. 20 for 20% or ₹20"></div>
+          <div class="field"><label>Expiry Date (optional)</label><input class="inp" id="c-expiry" type="date"></div>
+        </div>
+        <div class="field"><label>Usage Limit (optional — leave blank for unlimited)</label><input class="inp" id="c-limit" type="number" min="1" step="1" placeholder="e.g. 50"></div>
+        <button class="btn btn-primary" id="c-submit">Create Coupon</button>
+      </div>
+      <div id="coupons-list"></div>
     </div>
   </div>
 </div>
@@ -197,7 +236,7 @@ function showDash(session){
   $('#login-screen').style.display='none';
   $('#dash').style.display='block';
   $('#who').textContent = session.user.email;
-  loadPosts(); loadEvents(); loadStore();
+  loadPosts(); loadEvents(); loadStore(); loadCoupons();
 }
 $('#login-form').addEventListener('submit', async e=>{
   e.preventDefault();
@@ -346,16 +385,28 @@ async function loadEvents(){
 $('#s-submit').addEventListener('click', async ()=>{
   const btn = $('#s-submit'), original = btn.textContent;
   const name = $('#s-name').value.trim(), price = $('#s-price').value;
-  if (!name || !price){ showMsg('#store-msg','Name and price are required.', false); return; }
+  if (!name || !price){ showMsg('#store-msg','Name and current price are required.', false); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
-    const image = await uploadImage($('#s-image'));
+    const imageInputs = ['#s-image1','#s-image2','#s-image3','#s-image4'].map($);
+    const uploaded = [];
+    for (const inp of imageInputs){
+      const url = await uploadImage(inp);
+      if (url) uploaded.push(url);
+    }
+    const originalPriceVal = $('#s-original-price').value;
     const { error } = await sb.from('store_items').insert({
-      name, price: Number(price), description: $('#s-desc').value.trim(),
-      image, in_stock: $('#s-instock').checked, published: $('#s-published').checked
+      name, price: Number(price),
+      original_price: originalPriceVal ? Number(originalPriceVal) : null,
+      description: $('#s-desc').value.trim(),
+      image: uploaded[0] || null,
+      images: uploaded.length ? JSON.stringify(uploaded) : null,
+      in_stock: $('#s-instock').checked, published: $('#s-published').checked
     });
     if (error) throw error;
-    $('#s-name').value=''; $('#s-price').value=''; $('#s-desc').value=''; $('#s-image').value=''; $('#s-published').checked=false; $('#s-instock').checked=true;
+    $('#s-name').value=''; $('#s-price').value=''; $('#s-original-price').value=''; $('#s-desc').value='';
+    imageInputs.forEach(i=>i.value='');
+    $('#s-published').checked=false; $('#s-instock').checked=true;
     showMsg('#store-msg','Item added.', true);
     loadStore();
   }catch(err){ showMsg('#store-msg','Error: '+err.message, false); }
@@ -366,20 +417,78 @@ async function loadStore(){
   const list = $('#store-list');
   if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
   if (!data.length){ list.innerHTML = '<p class="empty-note">No store items yet.</p>'; return; }
-  list.innerHTML = data.map(it => `
+  list.innerHTML = data.map(it => {
+    let imgCount = 0;
+    try{ imgCount = it.images ? JSON.parse(it.images).length : (it.image ? 1 : 0); }catch(e){ imgCount = it.image ? 1 : 0; }
+    const discountLine = it.original_price
+      ? `<span class="meta" style="color:#f87171;text-decoration:line-through;margin-right:8px">₹${Number(it.original_price).toLocaleString('en-IN')}</span><span class="meta">₹${Number(it.price).toLocaleString('en-IN')}</span>`
+      : `<span class="meta">₹${Number(it.price).toLocaleString('en-IN')}</span>`;
+    return `
     <div class="item">
       ${it.image ? `<img src="${esc(it.image)}">` : ''}
       <div class="info">
         <h4>${esc(it.name)} <span class="pill ${it.published?'pub':'draft'}">${it.published?'Published':'Draft'}</span></h4>
         <p>${esc(it.description||'')}</p>
-        <span class="meta">₹${Number(it.price).toLocaleString('en-IN')} ${it.in_stock===false?'· Out of stock':''}</span>
+        ${discountLine} <span class="meta">${imgCount} photo${imgCount===1?'':'s'} ${it.in_stock===false?'· Out of stock':''}</span>
       </div>
       <div class="actions">
         <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="togglePublish('store_items','${it.id}',${!it.published})">${it.published?'Unpublish':'Publish'}</button>
         <button class="btn btn-danger" onclick="deleteRow('store_items','${it.id}',loadStore)">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
+
+/* ---------- COUPONS ---------- */
+$('#c-submit').addEventListener('click', async ()=>{
+  const btn = $('#c-submit'), original = btn.textContent;
+  const code = $('#c-code').value.trim().toUpperCase(), value = $('#c-value').value;
+  if (!code || !value){ showMsg('#coupons-msg','Code and discount value are required.', false); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const expiry = $('#c-expiry').value;
+    const limit = $('#c-limit').value;
+    const { error } = await sb.from('coupons').insert({
+      code, discount_type: $('#c-type').value, discount_value: Number(value),
+      expires_at: expiry ? new Date(expiry+'T23:59:59').toISOString() : null,
+      usage_limit: limit ? Number(limit) : null,
+      active: true
+    });
+    if (error) throw error;
+    $('#c-code').value=''; $('#c-value').value=''; $('#c-expiry').value=''; $('#c-limit').value='';
+    showMsg('#coupons-msg','Coupon created.', true);
+    loadCoupons();
+  }catch(err){ showMsg('#coupons-msg','Error: '+err.message, false); }
+  finally{ btn.disabled=false; btn.textContent=original; }
+});
+async function loadCoupons(){
+  const { data, error } = await sb.from('coupons').select('*').order('created_at',{ascending:false});
+  const list = $('#coupons-list');
+  if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
+  if (!data.length){ list.innerHTML = '<p class="empty-note">No coupons yet.</p>'; return; }
+  list.innerHTML = data.map(c => {
+    const discountText = c.discount_type === 'percent' ? `${c.discount_value}% off` : `₹${c.discount_value} off`;
+    const expiryText = c.expires_at ? `Expires ${new Date(c.expires_at).toLocaleDateString('en-IN')}` : 'No expiry';
+    const usageText = c.usage_limit ? `${c.times_used}/${c.usage_limit} used` : `${c.times_used} used, unlimited`;
+    return `
+    <div class="item">
+      <div class="info">
+        <h4>${esc(c.code)} <span class="pill ${c.active?'pub':'draft'}">${c.active?'Active':'Inactive'}</span></h4>
+        <p>${discountText}</p>
+        <span class="meta">${expiryText} · ${usageText}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="toggleCoupon('${c.id}',${!c.active})">${c.active?'Deactivate':'Activate'}</button>
+        <button class="btn btn-danger" onclick="deleteRow('coupons','${c.id}',loadCoupons)">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function toggleCoupon(id, newVal){
+  await sb.from('coupons').update({ active:newVal }).eq('id', id);
+  loadCoupons();
+}
+window.toggleCoupon = toggleCoupon;
 
 /* ---------- SHARED ---------- */
 async function togglePublish(table, id, newVal){
