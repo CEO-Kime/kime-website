@@ -213,6 +213,7 @@ textarea.inp{min-height:96px;resize:vertical}
 .price-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
 .price-old{font-family:var(--display);font-size:14px;color:var(--text-mute);text-decoration:line-through;text-decoration-color:var(--seigo-red)}
 .discount-badge{font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--seigo-red);color:#fff;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+.coming-soon{font-style:italic;opacity:.75}
 
 /* Multi-photo gallery */
 .gallery{display:flex;flex-direction:column}
