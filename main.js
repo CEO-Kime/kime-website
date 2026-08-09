@@ -223,7 +223,10 @@ addEventListener('pageshow', e=>{
       typing.remove();
       if(data.limited){
         limited = true;
-        addMsg("KimeBot has reached today's free chat limit. Please email contact@kimeworld.com and our team will help directly!", 'bot');
+        const msg = data.visitorLimited
+          ? "You've reached today's chat limit for one visitor. Please email contact@kimeworld.com and our team will help directly!"
+          : "KimeBot has reached today's free chat limit. Please email contact@kimeworld.com and our team will help directly!";
+        addMsg(msg, 'bot');
       }else{
         addMsg(data.reply || "Something went wrong — please email contact@kimeworld.com.", 'bot');
       }
