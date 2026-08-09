@@ -97,7 +97,7 @@ async function loadStore(){
           <h4>${esc(it.name)}</h4>
           <p>${esc(it.description||'')}</p>
           ${priceHtml}
-          ${it.in_stock === false ? `<span class="meta">Out of stock</span>` : `<button class="btn btn-primary buy" data-buy="${it.id}">Buy Now <span class="arr">→</span></button>`}
+          ${it.in_stock === false ? `<span class="meta">Out of stock</span>` : `<span class="meta coming-soon">Checkout opening soon</span>`}
         </div>
       </article>`;
   }).join('');
