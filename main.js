@@ -133,3 +133,106 @@ addEventListener('pageshow', e=>{
     }
   }
 });
+
+/* ============ KIMEBOT ============ */
+(function(){
+  const FAQ = [
+    { q: 'What programs do you offer?', a: "KIME runs on-site Karate-Do programs at residential societies, schools, corporates and dedicated training centres, all under one consistent Seigo-Kai standard. Check out the Programs page for the full breakdown." },
+    { q: 'How do I get started?', a: "Easiest way is to use the enquiry form on this site (tap 'Start a conversation' in the menu), tell us your school/society/company and city, and our team will reach out to set things up." },
+    { q: 'Where is KIME based?', a: "KIME operates across India, bringing Seigo-Kai Karate-Do training directly to schools, societies and workplaces rather than a single fixed location. Share your city in the enquiry form and we'll confirm availability." },
+    { q: "What's KIME's history?", a: "KIME carries five decades of Seigo-Kai Karate-Do heritage, under the Seigo-Kai Karate-Do Association of India, active since 1969. See the About page for the full story." },
+    { q: 'How do I contact a human?', a: "Anytime — email contact@kimeworld.com, or use the enquiry form on this site, and our team will get back to you directly." },
+  ];
+
+  const html = `
+  <div id="kimebot-launcher" aria-label="Chat with KimeBot" role="button" tabindex="0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+  </div>
+  <div id="kimebot-panel" aria-hidden="true">
+    <div id="kb-head">
+      <span id="kb-title">KimeBot</span>
+      <button id="kb-close" aria-label="Close chat">✕</button>
+    </div>
+    <div id="kb-body">
+      <div class="kb-msg kb-bot">Hi! I'm KimeBot 👋 Ask me anything about KIME, or pick a quick question below.</div>
+      <div id="kb-faq">${FAQ.map((f,i)=>`<button class="kb-chip" data-faq="${i}">${f.q}</button>`).join('')}</div>
+    </div>
+    <form id="kb-form">
+      <input id="kb-input" type="text" placeholder="Ask KimeBot anything…" maxlength="500" autocomplete="off">
+      <button type="submit" aria-label="Send">➤</button>
+    </form>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  const launcher = document.getElementById('kimebot-launcher');
+  const panel = document.getElementById('kimebot-panel');
+  const body = document.getElementById('kb-body');
+  const form = document.getElementById('kb-form');
+  const input = document.getElementById('kb-input');
+  let open = false, limited = false;
+
+  function toggle(){
+    open = !open;
+    panel.classList.toggle('open', open);
+    panel.setAttribute('aria-hidden', !open);
+    if(open) input.focus();
+  }
+  launcher.addEventListener('click', toggle);
+  launcher.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()} });
+  document.getElementById('kb-close').addEventListener('click', toggle);
+
+  function addMsg(text, who){
+    const d = document.createElement('div');
+    d.className = 'kb-msg kb-' + who;
+    d.textContent = text;
+    body.appendChild(d);
+    body.scrollTop = body.scrollHeight;
+    return d;
+  }
+
+  document.getElementById('kb-faq').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-faq]');
+    if(!btn) return;
+    const item = FAQ[+btn.dataset.faq];
+    addMsg(item.q, 'user');
+    addMsg(item.a, 'bot');
+    btn.remove();
+  });
+
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const msg = input.value.trim();
+    if(!msg) return;
+    input.value = '';
+    addMsg(msg, 'user');
+
+    if(limited){
+      addMsg("KimeBot has reached today's free chat limit. Please email contact@kimeworld.com and our team will help directly!", 'bot');
+      return;
+    }
+
+    const typing = addMsg('…', 'bot');
+    input.disabled = true;
+    try{
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      typing.remove();
+      if(data.limited){
+        limited = true;
+        addMsg("KimeBot has reached today's free chat limit. Please email contact@kimeworld.com and our team will help directly!", 'bot');
+      }else{
+        addMsg(data.reply || "Something went wrong — please email contact@kimeworld.com.", 'bot');
+      }
+    }catch(err){
+      typing.remove();
+      addMsg("KimeBot couldn't connect. Please email contact@kimeworld.com and our team will help directly.", 'bot');
+    }finally{
+      input.disabled = false;
+      input.focus();
+    }
+  });
+})();
