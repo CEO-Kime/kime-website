@@ -47,16 +47,43 @@ async function loadStore(){
   const { data, error } = await sb.from('store_items').select('*').eq('published', true).order('created_at', { ascending: false });
   if (error || !data || !data.length) { empty.style.display=''; return; }
   empty.style.display = 'none';
-  grid.innerHTML = data.map(it => `
-    <article class="dyn-card">
-      ${it.image ? `<img class="img" src="${esc(it.image)}" alt="" loading="lazy">` : ''}
-      <div class="body">
-        <h4>${esc(it.name)}</h4>
-        <p>${esc(it.description||'')}</p>
-        <span class="price">${fmtPrice(it.price)}</span>
-        ${it.in_stock === false ? `<span class="meta">Out of stock</span>` : `<button class="btn btn-primary buy" data-buy="${it.id}">Buy Now <span class="arr">→</span></button>`}
-      </div>
-    </article>`).join('');
+  grid.innerHTML = data.map(it => {
+    let images = [];
+    try{ images = it.images ? JSON.parse(it.images) : (it.image ? [it.image] : []); }catch(e){ images = it.image ? [it.image] : []; }
+    const discountPct = (it.original_price && it.original_price > it.price)
+      ? Math.round((1 - it.price / it.original_price) * 100) : null;
+    const galleryHtml = images.length > 1
+      ? `<div class="gallery">
+           <img class="img gallery-main" src="${esc(images[0])}" alt="" loading="lazy">
+           <div class="gallery-thumbs">
+             ${images.map((src,i)=>`<img class="thumb${i===0?' active':''}" src="${esc(src)}" data-idx="${i}" loading="lazy">`).join('')}
+           </div>
+         </div>`
+      : (images[0] ? `<img class="img" src="${esc(images[0])}" alt="" loading="lazy">` : '');
+    const priceHtml = discountPct
+      ? `<span class="price-row"><span class="price-old">${fmtPrice(it.original_price)}</span><span class="price">${fmtPrice(it.price)}</span><span class="discount-badge">${discountPct}% OFF</span></span>`
+      : `<span class="price">${fmtPrice(it.price)}</span>`;
+    return `
+      <article class="dyn-card" data-images='${JSON.stringify(images)}'>
+        ${galleryHtml}
+        <div class="body">
+          <h4>${esc(it.name)}</h4>
+          <p>${esc(it.description||'')}</p>
+          ${priceHtml}
+          ${it.in_stock === false ? `<span class="meta">Out of stock</span>` : `<button class="btn btn-primary buy" data-buy="${it.id}">Buy Now <span class="arr">→</span></button>`}
+        </div>
+      </article>`;
+  }).join('');
+
+  // gallery thumbnail click-to-swap
+  grid.querySelectorAll('.gallery').forEach(g=>{
+    const main = g.querySelector('.gallery-main');
+    g.querySelectorAll('.thumb').forEach(t=>t.addEventListener('click', ()=>{
+      main.src = t.src;
+      g.querySelectorAll('.thumb').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+    }));
+  });
 }
 
 loadPosts();
