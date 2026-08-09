@@ -126,8 +126,19 @@ header.top .who{font-size:13px;color:var(--text-mute)}
         <h3>New Announcement</h3>
         <p class="msg" id="posts-msg"></p>
         <div class="field"><label>Title</label><input class="inp" id="p-title"></div>
+        <div class="field"><label>Category (optional — e.g. Tournament, Partnership, Press)</label><input class="inp" id="p-category" placeholder="e.g. Tournament Results"></div>
         <div class="field"><label>Content</label><textarea id="p-content"></textarea></div>
-        <div class="field"><label>Cover Image (optional)</label><input class="inp" id="p-image" type="file" accept="image/*"></div>
+        <div class="field">
+          <label>Photos (up to 4 — first one is the main cover photo)</label>
+          <div class="row2" style="margin-bottom:12px">
+            <input class="inp" id="p-image1" type="file" accept="image/*">
+            <input class="inp" id="p-image2" type="file" accept="image/*">
+          </div>
+          <div class="row2">
+            <input class="inp" id="p-image3" type="file" accept="image/*">
+            <input class="inp" id="p-image4" type="file" accept="image/*">
+          </div>
+        </div>
         <div class="row2">
           <div class="field"><label><input type="checkbox" id="p-published" style="width:auto;margin-right:8px">Publish immediately</label></div>
           <div></div>
@@ -147,9 +158,17 @@ header.top .who{font-size:13px;color:var(--text-mute)}
           <div class="field"><label>Date</label><input class="inp" id="e-date" type="date"></div>
         </div>
         <div class="field"><label>Description</label><textarea id="e-desc"></textarea></div>
-        <div class="row2">
-          <div class="field"><label>Location</label><input class="inp" id="e-location"></div>
-          <div class="field"><label>Cover Image (optional)</label><input class="inp" id="e-image" type="file" accept="image/*"></div>
+        <div class="field"><label>Location</label><input class="inp" id="e-location"></div>
+        <div class="field">
+          <label>Photos (up to 4 — first one is the main cover photo)</label>
+          <div class="row2" style="margin-bottom:12px">
+            <input class="inp" id="e-image1" type="file" accept="image/*">
+            <input class="inp" id="e-image2" type="file" accept="image/*">
+          </div>
+          <div class="row2">
+            <input class="inp" id="e-image3" type="file" accept="image/*">
+            <input class="inp" id="e-image4" type="file" accept="image/*">
+          </div>
         </div>
         <div class="field"><label><input type="checkbox" id="e-published" style="width:auto;margin-right:8px">Publish immediately</label></div>
         <button class="btn btn-primary" id="e-submit">Add Event</button>
@@ -314,10 +333,23 @@ $('#p-submit').addEventListener('click', async ()=>{
   if (!title || !content){ showMsg('#posts-msg','Title and content are required.', false); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
-    const cover_image = await uploadImage($('#p-image'));
-    const { error } = await sb.from('posts').insert({ title, content, cover_image, published: $('#p-published').checked });
+    const imageInputs = ['#p-image1','#p-image2','#p-image3','#p-image4'].map($);
+    const uploaded = [];
+    for (const inp of imageInputs){
+      const url = await uploadImage(inp);
+      if (url) uploaded.push(url);
+    }
+    const { error } = await sb.from('posts').insert({
+      title, content,
+      category: $('#p-category').value.trim() || null,
+      cover_image: uploaded[0] || null,
+      images: uploaded.length ? JSON.stringify(uploaded) : null,
+      published: $('#p-published').checked
+    });
     if (error) throw error;
-    $('#p-title').value=''; $('#p-content').value=''; $('#p-image').value=''; $('#p-published').checked=false;
+    $('#p-title').value=''; $('#p-content').value=''; $('#p-category').value='';
+    imageInputs.forEach(i=>i.value='');
+    $('#p-published').checked=false;
     showMsg('#posts-msg','Announcement added.', true);
     loadPosts();
   }catch(err){ showMsg('#posts-msg','Error: '+err.message, false); }
@@ -328,18 +360,23 @@ async function loadPosts(){
   const list = $('#posts-list');
   if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
   if (!data.length){ list.innerHTML = '<p class="empty-note">No announcements yet.</p>'; return; }
-  list.innerHTML = data.map(p => `
+  list.innerHTML = data.map(p => {
+    let imgCount = 0;
+    try{ imgCount = p.images ? JSON.parse(p.images).length : (p.cover_image ? 1 : 0); }catch(e){ imgCount = p.cover_image ? 1 : 0; }
+    return `
     <div class="item">
       ${p.cover_image ? `<img src="${esc(p.cover_image)}">` : ''}
       <div class="info">
         <h4>${esc(p.title)} <span class="pill ${p.published?'pub':'draft'}">${p.published?'Published':'Draft'}</span></h4>
         <p>${esc((p.content||'').slice(0,120))}${(p.content||'').length>120?'…':''}</p>
+        <span class="meta">${p.category?esc(p.category)+' · ':''}${imgCount} photo${imgCount===1?'':'s'}</span>
       </div>
       <div class="actions">
         <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="togglePublish('posts','${p.id}',${!p.published})">${p.published?'Unpublish':'Publish'}</button>
         <button class="btn btn-danger" onclick="deleteRow('posts','${p.id}',loadPosts)">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ---------- EVENTS ---------- */
@@ -349,13 +386,22 @@ $('#e-submit').addEventListener('click', async ()=>{
   if (!title || !event_date){ showMsg('#events-msg','Title and date are required.', false); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
-    const cover_image = await uploadImage($('#e-image'));
+    const imageInputs = ['#e-image1','#e-image2','#e-image3','#e-image4'].map($);
+    const uploaded = [];
+    for (const inp of imageInputs){
+      const url = await uploadImage(inp);
+      if (url) uploaded.push(url);
+    }
     const { error } = await sb.from('events').insert({
       title, event_date, description: $('#e-desc').value.trim(), location: $('#e-location').value.trim(),
-      cover_image, published: $('#e-published').checked
+      cover_image: uploaded[0] || null,
+      images: uploaded.length ? JSON.stringify(uploaded) : null,
+      published: $('#e-published').checked
     });
     if (error) throw error;
-    $('#e-title').value=''; $('#e-date').value=''; $('#e-desc').value=''; $('#e-location').value=''; $('#e-image').value=''; $('#e-published').checked=false;
+    $('#e-title').value=''; $('#e-date').value=''; $('#e-desc').value=''; $('#e-location').value='';
+    imageInputs.forEach(i=>i.value='');
+    $('#e-published').checked=false;
     showMsg('#events-msg','Event added.', true);
     loadEvents();
   }catch(err){ showMsg('#events-msg','Error: '+err.message, false); }
@@ -366,19 +412,24 @@ async function loadEvents(){
   const list = $('#events-list');
   if (error){ list.innerHTML = `<p class="empty-note">Error loading: ${esc(error.message)}</p>`; return; }
   if (!data.length){ list.innerHTML = '<p class="empty-note">No events yet.</p>'; return; }
-  list.innerHTML = data.map(ev => `
+  list.innerHTML = data.map(ev => {
+    let imgCount = 0;
+    try{ imgCount = ev.images ? JSON.parse(ev.images).length : (ev.cover_image ? 1 : 0); }catch(e){ imgCount = ev.cover_image ? 1 : 0; }
+    const isPast = new Date(ev.event_date+'T23:59:59') < new Date();
+    return `
     <div class="item">
       ${ev.cover_image ? `<img src="${esc(ev.cover_image)}">` : ''}
       <div class="info">
-        <h4>${esc(ev.title)} <span class="pill ${ev.published?'pub':'draft'}">${ev.published?'Published':'Draft'}</span></h4>
+        <h4>${esc(ev.title)} <span class="pill ${ev.published?'pub':'draft'}">${ev.published?'Published':'Draft'}</span>${isPast?' <span class="pill draft">Past</span>':''}</h4>
         <p>${esc(ev.description||'')}</p>
-        <span class="meta">${esc(ev.event_date)} ${ev.location?'· '+esc(ev.location):''}</span>
+        <span class="meta">${esc(ev.event_date)} ${ev.location?'· '+esc(ev.location):''} · ${imgCount} photo${imgCount===1?'':'s'}</span>
       </div>
       <div class="actions">
         <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="togglePublish('events','${ev.id}',${!ev.published})">${ev.published?'Unpublish':'Publish'}</button>
         <button class="btn btn-danger" onclick="deleteRow('events','${ev.id}',loadEvents)">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ---------- STORE ---------- */
