@@ -116,13 +116,20 @@ $$('[data-count]').forEach(el=>sio.observe(el));
 
 $$('.field .inp').forEach(el=>el.addEventListener('input',()=>el.closest('.field').classList.remove('bad')));
 
-/* BACK/FORWARD BUTTON FIX — browsers often restore a frozen snapshot of the
-   page exactly as it looked the instant you navigated away (mid wipe-transition).
-   This clears that frozen cover the moment such a restore happens. */
+/* BACK/FORWARD BUTTON FIX — when you navigate away mid-transition, the browser
+   often freezes that exact covered frame for the Back/Forward cache. On return,
+   this properly plays the reveal (fist lifting away) instead of leaving it
+   stuck, or snapping instantly with no animation. */
 addEventListener('pageshow', e=>{
   if(e.persisted){
-    wipe.classList.remove('cover','reveal');
     document.body.classList.remove('locked');
     setMenu(false);
+    if(wipe.classList.contains('cover')){
+      wipe.classList.remove('cover');
+      wipe.classList.add('reveal');
+      setTimeout(()=>wipe.classList.remove('reveal'),700);
+    }else{
+      wipe.classList.remove('reveal');
+    }
   }
 });
