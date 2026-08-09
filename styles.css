@@ -208,6 +208,19 @@ textarea.inp{min-height:96px;resize:vertical}
 .dyn-card .price{font-family:var(--display);font-weight:700;font-size:17px;color:var(--text-hi);margin-top:4px}
 .dyn-card .buy{margin-top:12px;align-self:flex-start}
 #loader ~ * .dyn-grid.loading{opacity:.4}
+
+/* Discount pricing */
+.price-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.price-old{font-family:var(--display);font-size:14px;color:var(--text-mute);text-decoration:line-through;text-decoration-color:var(--seigo-red)}
+.discount-badge{font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--seigo-red);color:#fff;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+
+/* Multi-photo gallery */
+.gallery{display:flex;flex-direction:column}
+.gallery-main{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--navy-700)}
+.gallery-thumbs{display:flex;gap:6px;padding:8px 10px;background:var(--navy-900)}
+.gallery-thumbs .thumb{width:44px;height:44px;object-fit:cover;border-radius:4px;cursor:pointer;opacity:.5;border:1px solid transparent;transition:opacity .2s,border-color .2s}
+.gallery-thumbs .thumb:hover{opacity:.85}
+.gallery-thumbs .thumb.active{opacity:1;border-color:var(--gold)}
 .dl:hover{border-color:var(--hairline-strong)}
 .dl .t b{display:block;color:var(--text-hi);font-weight:600;font-size:15.5px;font-family:var(--display)}
 .dl .t span{font-size:13px;color:var(--text-mute)}
