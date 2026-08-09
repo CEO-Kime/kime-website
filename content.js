@@ -12,33 +12,68 @@ async function loadPosts(){
   const { data, error } = await sb.from('posts').select('*').eq('published', true).order('created_at', { ascending: false });
   if (error || !data || !data.length) { empty.style.display=''; return; }
   empty.style.display = 'none';
-  grid.innerHTML = data.map(p => `
-    <article class="dyn-card">
-      ${p.cover_image ? `<img class="img" src="${esc(p.cover_image)}" alt="" loading="lazy">` : ''}
-      <div class="body">
-        <span class="meta">${fmtDate(p.created_at.slice(0,10))}</span>
-        <h4>${esc(p.title)}</h4>
-        <p>${esc((p.content||'').slice(0,140))}${(p.content||'').length>140?'…':''}</p>
-      </div>
-    </article>`).join('');
+  grid.innerHTML = data.map(p => {
+    let images = [];
+    try{ images = p.images ? JSON.parse(p.images) : (p.cover_image ? [p.cover_image] : []); }catch(e){ images = p.cover_image ? [p.cover_image] : []; }
+    const galleryHtml = buildGallery(images);
+    return `
+      <article class="dyn-card">
+        ${galleryHtml}
+        <div class="body">
+          <span class="meta">${fmtDate(p.created_at.slice(0,10))}</span>
+          ${p.category ? `<span class="tag">${esc(p.category)}</span>` : ''}
+          <h4>${esc(p.title)}</h4>
+          <p>${esc((p.content||'').slice(0,140))}${(p.content||'').length>140?'…':''}</p>
+        </div>
+      </article>`;
+  }).join('');
+  wireGalleries(grid);
 }
 
 async function loadEvents(){
   const grid = document.getElementById('events-grid'), empty = document.getElementById('events-empty');
   if (!grid) return;
-  const { data, error } = await sb.from('events').select('*').eq('published', true).order('event_date', { ascending: true });
+  const todayStr = new Date().toISOString().slice(0,10);
+  const { data, error } = await sb.from('events').select('*').eq('published', true).gte('event_date', todayStr).order('event_date', { ascending: true });
   if (error || !data || !data.length) { empty.style.display=''; return; }
   empty.style.display = 'none';
-  grid.innerHTML = data.map(ev => `
-    <article class="dyn-card">
-      ${ev.cover_image ? `<img class="img" src="${esc(ev.cover_image)}" alt="" loading="lazy">` : ''}
-      <div class="body">
-        <span class="tag">${fmtDate(ev.event_date)}</span>
-        <h4>${esc(ev.title)}</h4>
-        <p>${esc(ev.description||'')}</p>
-        ${ev.location ? `<span class="meta">📍 ${esc(ev.location)}</span>` : ''}
-      </div>
-    </article>`).join('');
+  grid.innerHTML = data.map(ev => {
+    let images = [];
+    try{ images = ev.images ? JSON.parse(ev.images) : (ev.cover_image ? [ev.cover_image] : []); }catch(e){ images = ev.cover_image ? [ev.cover_image] : []; }
+    const galleryHtml = buildGallery(images);
+    return `
+      <article class="dyn-card">
+        ${galleryHtml}
+        <div class="body">
+          <span class="tag">${fmtDate(ev.event_date)}</span>
+          <h4>${esc(ev.title)}</h4>
+          <p>${esc(ev.description||'')}</p>
+          ${ev.location ? `<span class="meta">📍 ${esc(ev.location)}</span>` : ''}
+        </div>
+      </article>`;
+  }).join('');
+  wireGalleries(grid);
+}
+
+function buildGallery(images){
+  if (!images.length) return '';
+  if (images.length === 1) return `<img class="img" src="${esc(images[0])}" alt="" loading="lazy">`;
+  return `<div class="gallery">
+    <img class="img gallery-main" src="${esc(images[0])}" alt="" loading="lazy">
+    <div class="gallery-thumbs">
+      ${images.map((src,i)=>`<img class="thumb${i===0?' active':''}" src="${esc(src)}" data-idx="${i}" loading="lazy">`).join('')}
+    </div>
+  </div>`;
+}
+function wireGalleries(grid){
+  grid.querySelectorAll('.gallery').forEach(g=>{
+    const main = g.querySelector('.gallery-main');
+    g.querySelectorAll('.thumb').forEach(t=>t.addEventListener('click', ()=>{
+      main.src = t.src;
+      g.querySelectorAll('.thumb').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+    }));
+  });
 }
 
 async function loadStore(){
@@ -52,20 +87,12 @@ async function loadStore(){
     try{ images = it.images ? JSON.parse(it.images) : (it.image ? [it.image] : []); }catch(e){ images = it.image ? [it.image] : []; }
     const discountPct = (it.original_price && it.original_price > it.price)
       ? Math.round((1 - it.price / it.original_price) * 100) : null;
-    const galleryHtml = images.length > 1
-      ? `<div class="gallery">
-           <img class="img gallery-main" src="${esc(images[0])}" alt="" loading="lazy">
-           <div class="gallery-thumbs">
-             ${images.map((src,i)=>`<img class="thumb${i===0?' active':''}" src="${esc(src)}" data-idx="${i}" loading="lazy">`).join('')}
-           </div>
-         </div>`
-      : (images[0] ? `<img class="img" src="${esc(images[0])}" alt="" loading="lazy">` : '');
     const priceHtml = discountPct
       ? `<span class="price-row"><span class="price-old">${fmtPrice(it.original_price)}</span><span class="price">${fmtPrice(it.price)}</span><span class="discount-badge">${discountPct}% OFF</span></span>`
       : `<span class="price">${fmtPrice(it.price)}</span>`;
     return `
-      <article class="dyn-card" data-images='${JSON.stringify(images)}'>
-        ${galleryHtml}
+      <article class="dyn-card">
+        ${buildGallery(images)}
         <div class="body">
           <h4>${esc(it.name)}</h4>
           <p>${esc(it.description||'')}</p>
@@ -74,16 +101,7 @@ async function loadStore(){
         </div>
       </article>`;
   }).join('');
-
-  // gallery thumbnail click-to-swap
-  grid.querySelectorAll('.gallery').forEach(g=>{
-    const main = g.querySelector('.gallery-main');
-    g.querySelectorAll('.thumb').forEach(t=>t.addEventListener('click', ()=>{
-      main.src = t.src;
-      g.querySelectorAll('.thumb').forEach(x=>x.classList.remove('active'));
-      t.classList.add('active');
-    }));
-  });
+  wireGalleries(grid);
 }
 
 loadPosts();
