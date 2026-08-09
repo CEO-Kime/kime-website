@@ -115,3 +115,14 @@ const sio=new IntersectionObserver(es=>{es.forEach(e=>{
 $$('[data-count]').forEach(el=>sio.observe(el));
 
 $$('.field .inp').forEach(el=>el.addEventListener('input',()=>el.closest('.field').classList.remove('bad')));
+
+/* BACK/FORWARD BUTTON FIX — browsers often restore a frozen snapshot of the
+   page exactly as it looked the instant you navigated away (mid wipe-transition).
+   This clears that frozen cover the moment such a restore happens. */
+addEventListener('pageshow', e=>{
+  if(e.persisted){
+    wipe.classList.remove('cover','reveal');
+    document.body.classList.remove('locked');
+    setMenu(false);
+  }
+});
